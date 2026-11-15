@@ -8,6 +8,7 @@ import androidx.car.app.CarAppService
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.Session
+import androidx.activity.OnBackPressedCallback
 import androidx.car.app.AppManager
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
@@ -70,6 +71,15 @@ private fun CarContext.icon(res: Int) = CarIcon.Builder(IconCompat.createWithRes
 
 /** The car-side frame: our own UI fills the screen; Android Auto adds these buttons on top. */
 class MainScreen(carContext: CarContext, private val r: CarRenderer) : Screen(carContext) {
+    init {
+        // The car's own Back key (rotary / hardware) goes back a page instead of closing MD OS.
+        carContext.onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                r.ui?.back()
+            }
+        })
+    }
+
     private fun action(res: Int, block: () -> Unit) =
         Action.Builder().setIcon(carContext.icon(res)).setOnClickListener { block() }.build()
 

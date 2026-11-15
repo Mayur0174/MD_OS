@@ -115,6 +115,10 @@ class CarRenderer(private val carContext: Context) : SurfaceCallback {
 
     override fun onFling(velocityX: Float, velocityY: Float) = injector.fling(velocityX, velocityY)
 
+    override fun onScale(focusX: Float, focusY: Float, scaleFactor: Float) {
+        ui?.zoom(scaleFactor)
+    }
+
     fun release() {
         val p = presentation
         presentation = null

@@ -62,14 +62,16 @@ class CarUi(private val ctx: Context) {
         setPadding(dp(14), dp(8), dp(14), dp(8))
         background = rounded(0xFF2A3550.toInt(), 18)
         isClickable = true
-        setOnClickListener { showWeb() }
+        setOnClickListener { if (current != null) showWeb() else resumeLast() }
     }
     private val lockTitle = label("", 26f, bold = true).apply { gravity = Gravity.CENTER }
     private val lockBody = label("", 16f).apply {
         gravity = Gravity.CENTER
+        maxLines = 4
         alpha = 0.8f
         setPadding(dp(24), dp(8), dp(24), dp(16))
     }
+    private val prefs = ctx.getSharedPreferences("mdos", Context.MODE_PRIVATE)
     private val home: LinearLayout = buildHome()
     private val lock: LinearLayout = buildLock()
 
@@ -220,6 +222,20 @@ class CarUi(private val ctx: Context) {
         }
     }
 
+    /** Re-opens the last page watched (survives car restarts). */
+    fun resumeLast() {
+        val s = Services.byId(prefs.getString(KEY_LAST_ID, null)) ?: return
+        switchTo(s)
+        web.loadUrl(prefs.getString(KEY_LAST_URL, null) ?: s.url)
+        showWeb()
+    }
+
+    /** Pinch on the car screen: zoom the page (useful for desktop sites on an 8" screen). */
+    fun zoom(factor: Float) {
+        if (homeVisible || current == null || factor <= 0f || factor.isNaN()) return
+        web.zoomBy(factor.coerceIn(0.5f, 2f))
+    }
+
     fun showHome() {
         homeVisible = true
         refresh()
@@ -272,13 +288,15 @@ class CarUi(private val ctx: Context) {
     private fun refresh() {
         val cur = current
         home.visibility = if (homeVisible) View.VISIBLE else View.GONE
-        resumeBtn.visibility = if (cur != null) View.VISIBLE else View.GONE
-        resumeBtn.text = if (cur != null) "▶  Resume ${cur.name}" else ""
+        val last = if (cur == null) Services.byId(prefs.getString(KEY_LAST_ID, null)) else null
+        val resumeName = (cur ?: last)?.name
+        resumeBtn.visibility = if (resumeName != null) View.VISIBLE else View.GONE
+        resumeBtn.text = if (resumeName != null) "▶  $resumeName" else ""
 
         val (chip, color) = when (drive) {
-            DriveState.PARKED -> "●  Parked · video on" to 0xFF1E8E3E.toInt()
-            DriveState.DRIVING -> "●  Driving · audio only" to 0xFFE37400.toInt()
-            DriveState.UNKNOWN -> "●  Waiting for speed" to 0xFF5F6368.toInt()
+            DriveState.PARKED -> "●  Parked" to 0xFF1E8E3E.toInt()
+            DriveState.DRIVING -> "●  Driving" to 0xFFE37400.toInt()
+            DriveState.UNKNOWN -> "●  No speed yet" to 0xFF5F6368.toInt()
         }
         statusChip.text = chip
         statusChip.background = rounded(color, 14)
@@ -299,6 +317,10 @@ class CarUi(private val ctx: Context) {
         WebConfig.configure(w)
         w.webViewClient = object : MdWebClient() {
             override fun onPageFinished(view: WebView, url: String?) {
+                val cur = current
+                if (cur != null && url != null && url.startsWith("http")) {
+                    prefs.edit().putString(KEY_LAST_ID, cur.id).putString(KEY_LAST_URL, url).apply()
+                }
                 if (clearHistoryOnLoad) {
                     clearHistoryOnLoad = false
                     view.clearHistory()
@@ -479,6 +501,8 @@ class CarUi(private val ctx: Context) {
 
     private companion object {
         const val BG = 0xFF0B1220.toInt()
+        const val KEY_LAST_ID = "last_service"
+        const val KEY_LAST_URL = "last_url"
 
         /** Types text into the focused field; returns true if there was one. */
         const val TYPE_JS = """(function(t,enter){var e=document.activeElement;

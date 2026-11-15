@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.car.app:app-projected:1.4.0")
     implementation("androidx.webkit:webkit:1.12.1")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.activity:activity:1.9.3")
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:core:1.6.1")
