@@ -69,10 +69,11 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb logcat -c || true
+            nohup sh -c 'adb logcat -v time MdOsTest:V MdOs:V MdOsCar:V MdOsSpeed:V AndroidRuntime:E TestRunner:V DEBUG:V libc:F lowmemorykiller:V ActivityManager:I *:F > logcat.txt 2>&1' > /dev/null 2>&1 &
+            nohup sh -c 'while true; do timeout 30 adb exec-out run-as com.mdos.auto tar c files/report > r.tmp 2>/dev/null && [ -s r.tmp ] && mv r.tmp report.tar; sleep 20; done' > /dev/null 2>&1 &
             timeout 1200 adb shell am instrument -w -e class com.mdos.auto.CarScreenTest com.mdos.auto.test/androidx.test.runner.AndroidJUnitRunner > instrument.txt 2>&1 || echo "instrument exit/timeout $?" >> instrument.txt
-            adb exec-out run-as com.mdos.auto tar c files/report > report.tar || true
-            adb logcat -d -s AndroidRuntime:E MdOsTest:* MdOs:* MdOsCar:* MdOsSpeed:* chromium:E cr_media:* TestRunner:* > logcat.txt || true
-            adb shell dumpsys meminfo com.mdos.auto | head -40 > meminfo.txt || true
+            timeout 60 adb exec-out run-as com.mdos.auto tar c files/report > r.tmp 2>/dev/null && [ -s r.tmp ] && mv r.tmp report.tar || true
+            timeout 30 adb shell dumpsys meminfo com.mdos.auto > meminfo.txt 2>&1 || true
       - name: Package report
         if: always()
         run: |
