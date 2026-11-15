@@ -17,8 +17,9 @@ back to MD OS, which replays it as a finger touch.
 - Playback keeps going if you switch to Maps or another app on the car screen.
 - Sign in **once on the phone**. The car screen shares those sign-ins, so you never type passwords in the car.
 - The car's own keyboard (keyboard button) searches services or fills the text box you tapped.
-- **Safety:** video is covered while the car is moving and sound keeps playing. Speed comes from the car
-  through Android Auto, with phone GPS as a backup. Music apps stay usable while driving.
+- **Safety:** video is covered while the car is moving and sound keeps playing. Video returns 1 second after
+  the car stops. Speed comes from the car through Android Auto, with phone GPS as a backup. Music apps stay
+  usable while driving.
 
 ## Install
 
@@ -49,6 +50,15 @@ the old one and keeps your sign-ins.
 | Play/Pause | Toggle whatever is playing |
 | ▲ / ▼ (side) | Scroll the page |
 
+## Good to know
+
+- **Data:** video streaming uses roughly 1–3 GB per hour, depending on quality.
+- **Heat:** streaming while charging over Android Auto warms the phone. Keep it out of direct sun.
+- **Ad blocker:** a built-in ad and tracker blocker trims ads on free tiers and speeds up pages.
+- **Free content:** YouTube; the free tiers of Spotify, JioSaavn, Gaana and YouTube Music; MX Player (fully free);
+  free sections of JioHotstar, SonyLIV and ZEE5. Netflix, Prime Video and paid Hotstar need your own subscription.
+- **Passengers:** "Watch on this phone" in the phone app moves what the car screen was playing to the phone.
+
 ## Known limits
 
 - **DRM quality.** Netflix and Prime Video play through their websites inside the app's browser engine, using
@@ -77,4 +87,5 @@ You need JDK 17 and the Android SDK (API 35). CI runs this on every push (`.gith
 | `car/SpeedMonitor.kt` | Parked/driving detection (car speed + GPS) |
 | `WebConfig.kt` | Shared browser setup: DRM, user agents, background play |
 | `Services.kt` | The app catalogue (add a service here) |
-| `MainActivity.kt`, `LoginActivity.kt` | Phone setup and sign-in |
+| `MainActivity.kt`, `LoginActivity.kt` | Phone setup, sign-in, passenger player |
+| `androidTest/.../CarScreenTest.kt` | Emulator test: runs the car screen at 800×480 and opens every app |
