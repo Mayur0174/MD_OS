@@ -25,6 +25,7 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
     private var presentation: Presentation? = null
     private var width = 0
     private var height = 0
+    private var dpi = 0
     private var stableArea: Rect? = null
 
     var ui: CarUi? = null
@@ -43,17 +44,23 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
 
     override fun onSurfaceAvailable(container: SurfaceContainer) {
         val surface = container.surface ?: return
-        width = container.width
-        height = container.height
         val existing = virtualDisplay
-        if (existing != null) {
-            existing.resize(width, height, container.dpi)
+        if (existing != null && presentation != null &&
+            container.width == width && container.height == height && container.dpi == dpi
+        ) {
+            // Same screen coming back (e.g. after the keyboard or another app): keep page and playback.
             existing.surface = surface
             return
         }
+        // First start, or the screen size changed. Android dismisses a Presentation whose display
+        // changes size, so rebuild everything rather than resizing.
+        release()
+        width = container.width
+        height = container.height
+        dpi = container.dpi
         try {
             val dm = carContext.getSystemService(DisplayManager::class.java)
-            val vd = dm.createVirtualDisplay("MD OS", width, height, container.dpi, surface, 0)
+            val vd = dm.createVirtualDisplay("MD OS", width, height, dpi, surface, 0)
             virtualDisplay = vd
             val p = object : Presentation(carContext, vd.display, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen) {
                 override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +74,14 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
                     u.setDriveState(driveState)
                     stableArea?.let { u.setSafeArea(it, width, height) }
                     setContentView(u.root)
+                }
+            }
+            // If the system ever closes our window, forget it so the next surface rebuilds it.
+            p.setOnDismissListener {
+                if (presentation === p) {
+                    presentation = null
+                    ui?.destroy()
+                    ui = null
                 }
             }
             presentation = p
@@ -99,12 +114,13 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
     override fun onFling(velocityX: Float, velocityY: Float) = injector.fling(velocityX, velocityY)
 
     fun release() {
-        try { presentation?.dismiss() } catch (_: Throwable) {}
-        ui?.destroy()
-        virtualDisplay?.release()
+        val p = presentation
         presentation = null
-        virtualDisplay = null
+        try { p?.dismiss() } catch (_: Throwable) {}
+        ui?.destroy()
         ui = null
+        virtualDisplay?.release()
+        virtualDisplay = null
     }
 
     private companion object {

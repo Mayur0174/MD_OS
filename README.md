@@ -22,8 +22,8 @@ back to MD OS, which replays it as a finger touch.
 
 ## Install
 
-1. Download `MD-OS.apk`. Open the repo's **Actions** tab → latest *Build MD OS APK* run → **Artifacts** → `MD-OS-apk`.
-   GitHub delivers it as a zip; unzip it to get the APK.
+1. On your phone, open **https://github.com/Mayur0174/MD_OS/releases/tag/latest** and download `MD-OS.apk`.
+   (Every build is also kept under the **Actions** tab → *Build MD OS APK* → **Artifacts**, as a zip.)
 2. Install the APK on your Android phone and allow "install unknown apps" for your browser or file manager.
 3. Open **MD OS** on the phone:
    - tap **Allow location**

@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,3 +26,11 @@ jobs:
         with:
           name: MD-OS-apk
           path: MD-OS.apk
+      - name: Publish as the "latest" release (direct APK download link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --cleanup-tag -y || true
+          gh release create latest MD-OS.apk --target "$GITHUB_SHA" --prerelease \
+            --title "MD OS (latest build)" \
+            --notes "Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}. Install MD-OS.apk on your phone, then see the README for the Android Auto setup."
