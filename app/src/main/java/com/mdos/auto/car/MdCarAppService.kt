@@ -1,6 +1,9 @@
 package com.mdos.auto.car
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.util.Log
 import androidx.car.app.CarAppService
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
@@ -35,6 +38,22 @@ class MdSession : Session() {
         carContext.getCarService(AppManager::class.java).setSurfaceCallback(renderer)
         val speed = SpeedMonitor(carContext) { renderer.driveState = it }
         speed.start()
+        // Ask (on the phone) for anything the parked check needs but doesn't have yet.
+        val missing = listOf(Manifest.permission.ACCESS_FINE_LOCATION, CAR_SPEED).filter {
+            carContext.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            try {
+                carContext.requestPermissions(missing) { granted, _ ->
+                    if (granted.isNotEmpty()) {
+                        speed.stop()
+                        speed.start()
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.w("MdOs", "Permission request failed", t)
+            }
+        }
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onDestroy(owner: LifecycleOwner) {
                 speed.stop()
@@ -44,6 +63,8 @@ class MdSession : Session() {
         return MainScreen(carContext, renderer)
     }
 }
+
+private const val CAR_SPEED = "com.google.android.gms.permission.CAR_SPEED"
 
 private fun CarContext.icon(res: Int) = CarIcon.Builder(IconCompat.createWithResource(this, res)).build()
 

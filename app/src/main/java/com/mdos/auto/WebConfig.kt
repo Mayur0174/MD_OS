@@ -9,6 +9,7 @@ import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -17,6 +18,7 @@ import androidx.webkit.UserAgentMetadata
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import java.io.ByteArrayInputStream
 
 /**
  * One place that sets up every WebView in the app (car screen and phone sign-in), so both
@@ -77,6 +79,16 @@ Object.defineProperty(navigator,'maxTouchPoints',{get:function(){return 0}});
             setAcceptThirdPartyCookies(w, true)
         }
         w.setBackgroundColor(Color.BLACK)
+        // Keep the page's renderer alive and fast even while the car screen shows another app.
+        w.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
+        // Don't send the "X-Requested-With: <app>" header; Google sign-in uses it to refuse embedded browsers.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            try {
+                WebSettingsCompat.setRequestedWithHeaderOriginAllowList(w.settings, emptySet())
+            } catch (t: Throwable) {
+                Log.w(TAG, "X-Requested-With not removed", t)
+            }
+        }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(w, BACKGROUND_PLAY_JS, setOf("*"))
         }
@@ -125,8 +137,39 @@ Object.defineProperty(navigator,'maxTouchPoints',{get:function(){return 0}});
     }
 }
 
-/** Keeps navigation inside the WebView and swallows app-store / deep-link redirects. */
+/**
+ * Blocks well-known ad and tracking servers (like a browser ad blocker): fewer ads on free tiers
+ * and faster page loads. Only hosts that serve nothing but ads/tracking are listed, so the
+ * services themselves keep working.
+ */
+object AdBlock {
+    private val hosts = setOf(
+        "doubleclick.net", "googlesyndication.com", "googleadservices.com", "adservice.google.com",
+        "pagead2.googlesyndication.com", "google-analytics.com", "amazon-adsystem.com", "adnxs.com",
+        "taboola.com", "outbrain.com", "criteo.com", "criteo.net", "scorecardresearch.com", "moatads.com",
+        "pubmatic.com", "rubiconproject.com", "openx.net", "adsrvr.org", "casalemedia.com", "33across.com",
+        "smartadserver.com", "advertising.com", "yieldmo.com", "sharethrough.com", "teads.tv",
+        "branch.io", "app.link", "appsflyer.com", "adjust.com", "hotjar.com", "quantserve.com",
+    )
+
+    fun isBlocked(host: String?): Boolean {
+        var h = host?.lowercase() ?: return false
+        while (true) {
+            if (h in hosts) return true
+            val dot = h.indexOf('.')
+            if (dot < 0 || h.indexOf('.', dot + 1) < 0) return false
+            h = h.substring(dot + 1)
+        }
+    }
+
+    fun empty() = WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
+}
+
+/** Keeps navigation inside the WebView, swallows app-store / deep-link redirects, blocks ad servers. */
 open class MdWebClient : WebViewClient() {
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+        if (AdBlock.isBlocked(request.url.host)) AdBlock.empty() else null
+
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url
         return when (url.scheme?.lowercase()) {

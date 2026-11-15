@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import com.mdos.auto.car.CarLink
 
 /** Phone-side setup: permissions, one-time sign-in to each service, and Android Auto instructions. */
 class MainActivity : Activity() {
@@ -33,12 +34,15 @@ class MainActivity : Activity() {
         col.addView(text("MD OS", 30f, bold = true))
         col.addView(text("YouTube, Netflix, Prime Video, JioHotstar, Spotify and more on your car's Android Auto screen.", 15f, dim = true))
 
+        col.addView(button("🎬  Passenger: watch on this phone", 0xFF7C4DFF.toInt()) { watchOnPhone() })
+        col.addView(text("Moves what's playing on the car screen to this phone, from the same moment. Sound still plays through the car speakers.", 13f, dim = true))
+
         col.addView(section("1 · Allow location"))
         col.addView(text("MD OS needs this to know when the car is parked. Video only shows when parked; sound keeps playing while you drive.", 14f, dim = true))
         permStatus = text("", 14f, bold = true)
         col.addView(permStatus)
         col.addView(button("Allow location") {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1)
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, CAR_SPEED), 1)
         })
 
         col.addView(section("2 · Sign in once (on the phone)"))
@@ -49,6 +53,7 @@ class MainActivity : Activity() {
             })
         }
         col.addView(button("Sign out of everything", 0xFF3A3A3A.toInt()) { confirmSignOut() })
+        col.addView(text("Sign-in buttons also work as a normal player on the phone.", 13f, dim = true))
 
         col.addView(section("3 · Turn it on in Android Auto"))
         col.addView(text(SETUP_STEPS, 14f))
@@ -73,6 +78,21 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         onResume()
+    }
+
+    private fun watchOnPhone() {
+        val ui = CarLink.ui
+        if (ui?.current == null) {
+            Toast.makeText(this, "Nothing is playing on the car screen. Pick a service below to watch here.", Toast.LENGTH_LONG).show()
+            return
+        }
+        ui.handoff { service, url ->
+            startActivity(
+                Intent(this, LoginActivity::class.java)
+                    .putExtra(LoginActivity.EXTRA_ID, service.id)
+                    .putExtra(LoginActivity.EXTRA_URL, url),
+            )
+        }
     }
 
     private fun confirmSignOut() {
@@ -119,6 +139,7 @@ class MainActivity : Activity() {
 
     private companion object {
         const val BG = 0xFF0B1220.toInt()
+        const val CAR_SPEED = "com.google.android.gms.permission.CAR_SPEED"
 
         const val SETUP_STEPS = """Android Auto only lists Play Store apps until you allow others. Do this once:
 
@@ -135,6 +156,7 @@ If MD OS isn't listed, unplug, force-stop Android Auto (Settings → Apps → An
 • Keyboard: tap a search box on the page first, then type. Or pick "Search on …" from the list.
 • Full screen: use the player's own full-screen button. Back leaves full screen.
 • While driving, video is covered and the sound keeps playing. Music apps stay usable.
+• Passengers: tap "Watch on this phone" at the top of this screen to keep watching on the phone.
 • Netflix, Prime Video and other paid services stream through their websites. Their copy protection may limit picture quality or block some titles."""
     }
 }

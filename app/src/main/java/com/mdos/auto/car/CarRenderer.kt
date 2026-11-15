@@ -7,7 +7,7 @@ import android.hardware.display.VirtualDisplay
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import androidx.car.app.CarContext
+import android.content.Context
 import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
 
@@ -20,7 +20,7 @@ import androidx.car.app.SurfaceContainer
  * The display is kept alive when Android Auto takes the surface away (e.g. you open Maps), so
  * playback and page state survive switching apps.
  */
-class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
+class CarRenderer(private val carContext: Context) : SurfaceCallback {
     private var virtualDisplay: VirtualDisplay? = null
     private var presentation: Presentation? = null
     private var width = 0
@@ -71,6 +71,7 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
                     )
                     val u = CarUi(context)
                     ui = u
+                    CarLink.ui = u
                     u.setDriveState(driveState)
                     stableArea?.let { u.setSafeArea(it, width, height) }
                     setContentView(u.root)
@@ -80,6 +81,7 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
             p.setOnDismissListener {
                 if (presentation === p) {
                     presentation = null
+                    if (CarLink.ui === ui) CarLink.ui = null
                     ui?.destroy()
                     ui = null
                 }
@@ -117,6 +119,7 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
         val p = presentation
         presentation = null
         try { p?.dismiss() } catch (_: Throwable) {}
+        if (CarLink.ui === ui) CarLink.ui = null
         ui?.destroy()
         ui = null
         virtualDisplay?.release()
@@ -126,4 +129,10 @@ class CarRenderer(private val carContext: CarContext) : SurfaceCallback {
     private companion object {
         const val TAG = "MdOsCar"
     }
+}
+
+/** Lets the phone app reach the car screen (both run in the same app process). */
+object CarLink {
+    @Volatile
+    var ui: CarUi? = null
 }

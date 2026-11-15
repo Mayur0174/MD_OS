@@ -173,6 +173,44 @@ class CarUi(private val ctx: Context) {
         )
     }
 
+    /**
+     * Passenger mode: pauses the car screen and hands back the page URL (with the current video
+     * time where the service supports it) so the phone can continue playback.
+     */
+    fun handoff(onResult: (Service, String) -> Unit) {
+        val s = current ?: return
+        web.evaluateJavascript(HANDOFF_JS) { r ->
+            var url = web.url ?: s.url
+            try {
+                val o = JSONObject(JSONObject("{\"v\":$r}").getString("v"))
+                url = o.optString("u", url)
+                val t = o.optInt("t", 0)
+                val host = Uri.parse(url).host.orEmpty()
+                if (t > 5 && host.contains("youtube.com") && url.contains("watch")) {
+                    url = Uri.parse(url).buildUpon().appendQueryParameter("t", "${t}s").build().toString()
+                }
+            } catch (_: Throwable) {}
+            onResult(s, url)
+        }
+    }
+
+    // ---------- hooks used by the on-device test ----------
+
+    internal fun evalJs(js: String, cb: (String?) -> Unit) = web.evaluateJavascript(js) { cb(it) }
+
+    internal fun tileCenter(id: String): PointF? {
+        val name = Services.byId(id)?.name ?: return null
+        fun find(v: View): View? {
+            if (v is TextView && v.text == name) return v.parent as? View
+            if (v is ViewGroup) for (i in 0 until v.childCount) find(v.getChildAt(i))?.let { return it }
+            return null
+        }
+        val tile = find(home) ?: return null
+        val loc = IntArray(2)
+        tile.getLocationInWindow(loc)
+        return PointF(loc[0] + tile.width / 2f, loc[1] + tile.height / 2f)
+    }
+
     fun back() {
         when {
             customView != null -> customCallback?.onCustomViewHidden() ?: hideCustom()
@@ -245,7 +283,7 @@ class CarUi(private val ctx: Context) {
         val locked = !homeVisible && cur != null && cur.kind != Kind.MUSIC && drive != DriveState.PARKED
         if (drive == DriveState.DRIVING) {
             lockTitle.text = "Video is hidden while driving"
-            lockBody.text = "Sound keeps playing. Park the car to watch."
+            lockBody.text = "Sound keeps playing. Passengers: open MD OS on the phone and tap \"Watch on this phone\"."
         } else {
             lockTitle.text = "Checking that the car is parked…"
             lockBody.text = "Video turns on once the car is stopped. If this stays, allow Location for MD OS on your phone."
@@ -358,7 +396,7 @@ class CarUi(private val ctx: Context) {
         col.addView(bar)
 
         val grid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        val columns = 4
+        val columns = 5
         Services.all.chunked(columns).forEach { items ->
             val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
             items.forEach { s ->
@@ -451,6 +489,11 @@ if(enter){var o={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cance
 var ok=e.dispatchEvent(new KeyboardEvent('keydown',o));e.dispatchEvent(new KeyboardEvent('keypress',o));e.dispatchEvent(new KeyboardEvent('keyup',o));
 if(ok&&e.form){try{e.form.requestSubmit?e.form.requestSubmit():e.form.submit()}catch(x){}}}
 return true})(__TEXT__,__ENTER__)"""
+
+        const val HANDOFF_JS = """(function(){var v=document.querySelector('video');var t=0;
+if(v){t=Math.floor(v.currentTime||0);try{v.pause()}catch(e){}}
+[].slice.call(document.querySelectorAll('audio')).forEach(function(a){try{a.pause()}catch(e){}});
+return JSON.stringify({u:location.href,t:t})})()"""
 
         const val PLAY_PAUSE_JS = """(function(){
 var m=[].slice.call(document.querySelectorAll('video,audio'));

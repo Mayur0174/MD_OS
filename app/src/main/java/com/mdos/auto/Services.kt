@@ -28,6 +28,7 @@ object Services {
         Service("hotstar", "JioHotstar", "JH", "https://www.hotstar.com/in/home", 0xFF1F3C88.toInt(), Kind.VIDEO, true),
         Service("sonyliv", "SonyLIV", "LIV", "https://www.sonyliv.com/", 0xFF5B2A86.toInt(), Kind.VIDEO, true),
         Service("zee5", "ZEE5", "Z5", "https://www.zee5.com/", 0xFF7B1FA2.toInt(), Kind.VIDEO, true),
+        Service("mxplayer", "MX Player", "MX", "https://www.mxplayer.in/", 0xFF1565C0.toInt(), Kind.VIDEO, true),
         Service("spotify", "Spotify", "♫", "https://open.spotify.com/", 0xFF1AA34A.toInt(), Kind.MUSIC, true,
             "https://open.spotify.com/search/%s", "https://accounts.spotify.com/login"),
         Service("ytmusic", "YouTube Music", "♪", "https://music.youtube.com/", 0xFFA3001B.toInt(), Kind.MUSIC, true,
