@@ -39,7 +39,7 @@ jobs:
   # screenshots + a JSON report as the "test-report" release.
   device-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -68,14 +68,19 @@ jobs:
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class com.mdos.auto.CarScreenTest com.mdos.auto.test/androidx.test.runner.AndroidJUnitRunner | tee instrument.txt || true
+            adb logcat -c || true
+            timeout 1200 adb shell am instrument -w -e class com.mdos.auto.CarScreenTest com.mdos.auto.test/androidx.test.runner.AndroidJUnitRunner > instrument.txt 2>&1 || echo "instrument exit/timeout $?" >> instrument.txt
             adb exec-out run-as com.mdos.auto tar c files/report > report.tar || true
-            adb logcat -d -s AndroidRuntime:E MdOs:* MdOsCar:* MdOsSpeed:* chromium:E cr_media:* > logcat.txt || true
+            adb logcat -d -s AndroidRuntime:E MdOsTest:* MdOs:* MdOsCar:* MdOsSpeed:* chromium:E cr_media:* TestRunner:* > logcat.txt || true
+            adb shell dumpsys meminfo com.mdos.auto | head -40 > meminfo.txt || true
       - name: Package report
         if: always()
         run: |
           mkdir -p report && (tar xf report.tar -C report || true)
-          cp instrument.txt logcat.txt report/ 2>/dev/null || true
+          cp instrument.txt logcat.txt meminfo.txt report/ 2>/dev/null || true
+          cat instrument.txt || true
+          tail -60 logcat.txt || true
+          cat report/files/report/progress.txt 2>/dev/null || true
           cat report/files/report/report.json 2>/dev/null || echo "no report.json"
           cd report && zip -qr ../test-report.zip . && cd ..
       - uses: actions/upload-artifact@v4

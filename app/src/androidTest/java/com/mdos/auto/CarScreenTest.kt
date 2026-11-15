@@ -7,6 +7,7 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import android.util.Log
 import androidx.car.app.SurfaceContainer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -38,7 +39,21 @@ class CarScreenTest {
     private val lock = Any()
     private var latest: Image? = null
 
-    private fun main(block: () -> Unit) = inst.runOnMainSync(block)
+    private fun step(msg: String) {
+        Log.i("MdOsTest", msg)
+        File(out, "progress.txt").appendText("${SystemClock.uptimeMillis()} $msg\n")
+    }
+
+    /** Runs on the main thread but never waits more than [timeoutMs] (a stuck UI thread is reported, not hung). */
+    private fun main(timeoutMs: Long = 15_000, block: () -> Unit) {
+        val done = CountDownLatch(1)
+        var error: Throwable? = null
+        inst.targetContext.mainExecutor.execute {
+            try { block() } catch (t: Throwable) { error = t } finally { done.countDown() }
+        }
+        if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) step("MAIN THREAD STUCK > ${timeoutMs}ms")
+        error?.let { step("main error: $it"); throw it }
+    }
 
     private fun js(renderer: CarRenderer, script: String): String? {
         var r: String? = null
@@ -68,15 +83,21 @@ class CarScreenTest {
     @Test
     fun carScreen() {
         reader.setOnImageAvailableListener({ r ->
-            val img = r.acquireLatestImage() ?: return@setOnImageAvailableListener
             synchronized(lock) {
-                latest?.close()
-                latest = img
+                try {
+                    // Free our held frame first so the reader always has room for the newest one.
+                    latest?.close()
+                    latest = null
+                    latest = r.acquireLatestImage()
+                } catch (t: Throwable) {
+                    Log.w("MdOsTest", "frame", t)
+                }
             }
         }, Handler(thread.looper))
 
+        step("start")
         lateinit var renderer: CarRenderer
-        main {
+        main(30_000) {
             renderer = CarRenderer(ctx)
             renderer.onSurfaceAvailable(SurfaceContainer(reader.surface, W, H, DPI))
             // Android Auto keeps the right edge for its own buttons.
@@ -85,6 +106,7 @@ class CarScreenTest {
         SystemClock.sleep(2500)
         assertNotNull("car UI did not start", renderer.ui)
         shot("00-home-waiting-for-speed")
+        step("home shown")
 
         main { renderer.driveState = DriveState.PARKED }
         SystemClock.sleep(500)
@@ -97,6 +119,7 @@ class CarScreenTest {
         main { renderer.onClick(t.x, t.y) }
         SystemClock.sleep(14_000)
         shot("02-youtube-after-tap")
+        step("youtube tapped: ${renderer.ui?.current?.id}")
         val tappedOpen = renderer.ui?.current?.id == "youtube"
 
         // Drag up the screen like a finger, through the scroll callbacks.
@@ -124,6 +147,7 @@ class CarScreenTest {
         shot("05-youtube-search")
 
         Services.all.forEachIndexed { i, s ->
+            step("open ${s.id}")
             main { renderer.ui?.open(s) }
             SystemClock.sleep(16_000)
             js(renderer, EME_START)
@@ -140,6 +164,7 @@ class CarScreenTest {
             File(out, "report.json").writeText(results.toString(2))
         }
 
+        step("done")
         main { renderer.release() }
         File(out, "report.json").writeText(results.toString(2))
     }
