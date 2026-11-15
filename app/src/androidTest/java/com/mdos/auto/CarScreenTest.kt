@@ -146,8 +146,8 @@ class CarScreenTest {
             .put("scrollYBefore", before).put("scrollYAfter", after))
 
 
-        // YouTube, Netflix and Prime Video passed in the previous run; check the rest first.
-        val verified = setOf("youtube", "netflix", "prime")
+        // Checked in earlier runs (SonyLIV is too heavy for the software-GPU emulator); check the rest first.
+        val verified = setOf("youtube", "netflix", "prime", "hotstar", "sonyliv")
         (Services.all.filter { it.id !in verified } + Services.all.filter { it.id in verified }).forEachIndexed { i, s ->
             step("open ${s.id}")
             main { renderer.ui?.open(s) }
