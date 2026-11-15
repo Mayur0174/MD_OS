@@ -263,7 +263,10 @@ class CarUi(private val ctx: Context) {
         current = s
         serviceScript = WebConfig.applyService(web, s, serviceScript)
         clearHistoryOnLoad = true
-        if (customView != null) hideCustom()
+        if (customView != null) {
+            customCallback?.onCustomViewHidden()
+            hideCustom()
+        }
     }
 
     private fun refresh() {
