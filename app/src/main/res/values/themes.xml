@@ -1,0 +1,10 @@
+<resources>
+    <color name="launcher_bg">#FF0B1220</color>
+    <style name="Theme.MdOs" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#FF3D8BFF</item>
+        <item name="android:colorPrimary">#FF0B1220</item>
+        <item name="android:windowBackground">@color/launcher_bg</item>
+        <item name="android:statusBarColor">#FF0B1220</item>
+        <item name="android:navigationBarColor">#FF0B1220</item>
+    </style>
+</resources>
