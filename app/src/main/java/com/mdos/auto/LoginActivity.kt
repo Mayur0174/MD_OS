@@ -44,14 +44,14 @@ class LoginActivity : Activity() {
                 fullscreenCallback = callback
                 view.setBackgroundColor(Color.BLACK)
                 frame.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                setImmersive(true)
+                applyFullscreen(true)
             }
 
             override fun onHideCustomView() {
                 fullscreenView?.let { frame.removeView(it) }
                 fullscreenView = null
                 fullscreenCallback = null
-                setImmersive(false)
+                applyFullscreen(false)
             }
         }
         frame = FrameLayout(this).apply {
@@ -64,7 +64,7 @@ class LoginActivity : Activity() {
         web = w
     }
 
-    private fun setImmersive(on: Boolean) {
+    private fun applyFullscreen(on: Boolean) {
         if (android.os.Build.VERSION.SDK_INT < 30) return
         val c = window.insetsController ?: return
         if (on) {

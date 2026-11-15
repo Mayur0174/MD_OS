@@ -109,7 +109,7 @@ class SpeedMonitor(
                     DriveState.PARKED
                 } else {
                     if (slowSince == 0L) slowSince = now
-                    if (now - slowSince >= 3000) DriveState.PARKED else DriveState.DRIVING
+                    if (now - slowSince >= 1000) DriveState.PARKED else DriveState.DRIVING
                 }
             }
             else -> {
@@ -126,6 +126,6 @@ class SpeedMonitor(
     private companion object {
         const val TAG = "MdOsSpeed"
         const val MOVING_MPS = 2.5f   // ~9 km/h
-        const val STOPPED_MPS = 1.0f  // ~3.6 km/h, held for 3 s
+        const val STOPPED_MPS = 1.0f  // ~3.6 km/h, held for 1 s
     }
 }
