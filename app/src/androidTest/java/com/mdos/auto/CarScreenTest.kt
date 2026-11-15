@@ -122,19 +122,6 @@ class CarScreenTest {
         step("youtube tapped: ${renderer.ui?.current?.id}")
         val tappedOpen = renderer.ui?.current?.id == "youtube"
 
-        // Drag up the screen like a finger, through the scroll callbacks.
-        val before = js(renderer, "window.scrollY")
-        repeat(12) {
-            main { renderer.onScroll(0f, 25f) }
-            SystemClock.sleep(30)
-        }
-        main { renderer.onFling(0f, -1500f) }
-        SystemClock.sleep(2000)
-        val after = js(renderer, "window.scrollY")
-        shot("03-youtube-after-scroll")
-        results.put(JSONObject().put("check", "touch").put("tapOpenedYouTube", tappedOpen)
-            .put("scrollYBefore", before).put("scrollYAfter", after))
-
         // Driving: video must be covered.
         main { renderer.driveState = DriveState.DRIVING }
         SystemClock.sleep(600)
@@ -145,8 +132,23 @@ class CarScreenTest {
         main { renderer.ui?.searchOn(Services.youtube, "lofi music") }
         SystemClock.sleep(10_000)
         shot("05-youtube-search")
+        // Drag up the screen like a finger, through the scroll callbacks.
+        val before = js(renderer, "window.scrollY")
+        repeat(12) {
+            main { renderer.onScroll(0f, 25f) }
+            SystemClock.sleep(30)
+        }
+        main { renderer.onFling(0f, -1500f) }
+        SystemClock.sleep(2000)
+        val after = js(renderer, "window.scrollY")
+        shot("06-youtube-results-after-scroll")
+        results.put(JSONObject().put("check", "touch").put("tapOpenedYouTube", tappedOpen)
+            .put("scrollYBefore", before).put("scrollYAfter", after))
 
-        Services.all.forEachIndexed { i, s ->
+
+        // YouTube, Netflix and Prime Video passed in the previous run; check the rest first.
+        val verified = setOf("youtube", "netflix", "prime")
+        (Services.all.filter { it.id !in verified } + Services.all.filter { it.id in verified }).forEachIndexed { i, s ->
             step("open ${s.id}")
             main { renderer.ui?.open(s) }
             SystemClock.sleep(16_000)
@@ -162,6 +164,9 @@ class CarScreenTest {
             }
             results.put(o)
             File(out, "report.json").writeText(results.toString(2))
+            // Unload the page before the next one to keep the emulator's memory low.
+            js(renderer, "location.replace('about:blank')")
+            SystemClock.sleep(1500)
         }
 
         step("done")
